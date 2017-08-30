@@ -15,6 +15,7 @@
 <script type="text/javascript" src="jquery-ui.min.js"></script>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/tabulator/3.2.2/css/tabulator.min.css" rel="stylesheet">
 <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/tabulator/3.2.2/js/tabulator.min.js"></script>
+<script type="text/javascript" src="/manageelist.js"></script>
 <script>
 var rankEditor = function(cell, onRendered, success, cancel, editorParams){
     //cell - the cell component for the editable cell
@@ -62,15 +63,6 @@ var rankEditor = function(cell, onRendered, success, cancel, editorParams){
     //return the editor element
     return editor;
 };
-
-//define some sample data
-var tabledata = [
-    {id:1, name:"Oli Bob", yn:false, rank: ""},
-    {id:2, name:"Mary May", yn:false, rank: ""},
-    {id:3, name:"Christine Lobowski", yn:false, rank: ""},
-    {id:4, name:"Brendon Philips", yn:false, rank: ""},
-    {id:5, name:"Margret Marmajuke", yn:false, rank: ""},
-];
 
 $("#managee-table").tabulator({
     //height:205, // set height of table

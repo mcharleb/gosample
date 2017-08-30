@@ -1,6 +1,6 @@
 all: test
 
-test:
+test: test.go
 	go build test.go
 
 run: test
