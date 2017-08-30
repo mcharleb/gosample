@@ -1,12 +1,23 @@
 <!DOCTYPE html>
 <html>
 <head/>
+<style>
+div.mtable { 
+  	margin: 0 auto;
+	float: left;
+}
+div.formdiv { 
+	display: table;
+  	margin: 0 auto;
+	margin-top : 10px;
+}
+</style>
 <body>
-<h3 id="username"/>
-<div>
+<h3 id="username">Username</h3>
+<div class="mtable">
 <div id="managee-table"></div><div/>
 </div>
-<div >
+<div class="formdiv">
 <form action="/submit">
   <input type="submit" value="Submit">
 </form>
@@ -69,13 +80,10 @@ $("#managee-table").tabulator({
     fitColumns:false, //fit columns to width of table (optional)
     columns:[ //Define Table Columns
         {title:"ID", field:"id", width:45},
-        {title:"Name", field:"name", width:250},
+        {title:"Name", field:"name", columnMinWidth:250},
         {title:"Y/N", field:"yn", width:65, editor:true, formatter:"tickCross"},
         {title:"Rank", field:"rank", width:80, sorter:"number", editor:rankEditor, editorParams:{max:tabledata.length}},
     ],
-    rowClick:function(e, row){ //trigger an alert message when the row is clicked
-        alert("Row " + row.getData().id + " Clicked!!!!");
-    },
 });
 //load sample data into the table
 $("#managee-table").tabulator("setData", tabledata);
