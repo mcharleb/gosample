@@ -1,11 +1,11 @@
-all: test
+all: review
 
-test: test.go
+review: review.go
 	go build $?
 
-run: test
+run: review
 	@echo "Running on localhost:8080"
-	./test
+	./review
 
-test.exe: test.go
+review.exe: review.go
 	GOOS=windows GOARCH=amd64 go build -o $@ $?

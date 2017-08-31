@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head/>
+<style>
+div.formdiv { 
+	display: table;
+  	margin: 0 auto;
+	margin-top : 10px;
+}
+</style>
+<body onload="onLoad()">
+<h3 id="username">Username</h3>
+<div>
+<div id="managee-table" ></div><div/>
+</div>
+<div class="formdiv">
+  <input type="button" value="Save" onclick="onSave()"/>
+</div>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/tabulator/3.2.2/css/tabulator.min.css" rel="stylesheet">
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/tabulator/3.2.2/js/tabulator.min.js"></script>
+<script>
+function onSave() {
+    var user = document.getElementById("username").innerHTML;
+    $.post( "/ajax/save", { "user": user, 'data': JSON.stringify($("#managee-table").tabulator("getData")) } )
+}
+
+var rankCalc = function(values, data, calcParams){
+    //values - array of column values
+    //data - all table data
+    //calcParams - params passed from the column defintion object
+
+    var count = 0;
+
+    values.forEach(function(value){
+        if(value == 0){
+            count ++;
+        }
+    });
+
+    return count;
+}
+var rankEditor = function(cell, onRendered, success, cancel, editorParams){
+    //cell - the cell component for the editable cell
+    //onRendered - function to call when the editor has been rendered
+    //success - function to call to pass the succesfully updated value to Tabulator
+    //cancel - function to call to abort the edit and return to a normal cell
+    //editorParams - editorParams object set in column defintion
+
+    //create and style editor
+    var editor = $("<input/>");
+
+    //Set value of editor to the current value of the cell
+    editor.val(cell.getValue());
+
+    //set focus on the select box when the editor is selected (timeout allows for editor to be added to DOM)
+    onRendered(function(){
+      editor.focus();
+    });
+
+    //when the value has been set, trigger the cell to update
+    editor.on("change blur", function(e){
+        if (editor.val() > 0 && editor.val() <= editorParams.max) {
+            success(editor.val());
+            // Look for duplicates
+            var dups = [];
+            var i;
+            var rows = $("#managee-table").tabulator("getRows");
+            for (i=0; i < rows.length; i++) {
+                s = rows[i]; 
+		var num = Number(s.getData().rank);
+                if (num > 0 && dups[num]) {
+                    s.getElement().css({"background-color":"#ee0000"});
+                    dups[num].getElement().css({"background-color":"#ee0000"});
+                }
+		else if (num != 0) {
+                    s.getElement().css({"background-color":""});
+                    dups[num] = s;
+		}
+            }
+        }
+        else {
+            cancel();
+	}
+    });
+
+    //return the editor element
+    return editor;
+};
+
+// Update the tabledata with the saved data and set the username
+var tabledata = "";
+
+function onLoad() {
+$.ajax({
+    url: '/ajax/get',
+    type: 'POST',
+    data: {
+    },
+   success:function(data)//we got the response
+   {
+    var d = JSON.parse(data)
+    document.getElementById("username").innerHTML = d.user;
+    tabledata = d.tabledata;
+	$("#managee-table").tabulator({
+	    //height:205, // set height of table
+	    fitColumns:true, //fit columns to width of table (optional)
+	    columns:[ //Define Table Columns
+		{title:"ID", field:"id", width:45, columnMinWidth:45},
+		{title:"Name", field:"name", width:300, columnMinWidth:300},
+		{title:"Y/N", field:"yn", width:65, columnMinWidth:65, editor:true, formatter:"tickCross"},
+		{title:"Rank", field:"rank", width:70, columnMinWidth:80, sorter:"number", editor:rankEditor, editorParams:{max:tabledata.length}, bottomCalc:rankCalc},
+		{title:"Notes", field:"notes", sorter:"number", editor:"input"},
+	    ],
+	});
+	//load sample data into the table
+	$("#managee-table").tabulator("setData", tabledata);
+   },
+   error:function(exception){
+      alert('Exception:'+exception);
+   }
+});
+
+}
+</script>
+</body>
+</html>
