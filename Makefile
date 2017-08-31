@@ -1,5 +1,12 @@
 all: review
 
+GOPATH?=`pwd`/go
+
+export GOPATH
+
+${GOPATH}/github.com/satori/go.uuid:
+	go get github.com/satori/go.uuid
+
 review: review.go
 	go build $?
 

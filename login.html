@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login</title>
+</head>
+<style>
+.container {
+  width:210px;
+  margin:0 auto;
+    padding: 16px;
+}
+input[type=input], input[type=password] {
+    width: 100%;
+    padding: 12px 20px;
+    margin: 8px 0;
+    display: inline-block;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+}
+
+button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 14px 20px;
+    margin: 8px 0;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+}
+</style>
+<body>
+    <form id="login" action="/login" method="post">
+        <div class="container">
+	<label><b>Username</b></label>
+	<input type="input" name="user" />
+	<label><b>Password</b></label>
+	<input type="password" name="password" />
+        <button type="submit" />Login</button>
+        </div>
+    </form>
+</body>
+</html>

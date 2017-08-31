@@ -17,35 +17,10 @@ type Client struct {
     username string
 }
 
-const loginPage = `<html>
-<head>
-    <title>Login</title>
-</head>
-<body>
-    <form id="login" action="foo" method="post">
-        <input type="input" name="user" />
-        <input type="password" name="password" />
-        <input type="submit" value="Login" />
-    </form>
-    <script>
-    function SetLoginUrl() {
-	var path = window.location.pathname
-	if (path.substring(0,"/login".length) == "/login") {
-	    path = path.substring("/login".length)
-	}
-        return "/login"
-    }
-
-    document.getElementById('login').setAttribute('action', SetLoginUrl());
-    </script>
-</body>
-</html>`
-
 func main() {
 
     managers = make(map[string]string)
     sessionStore = make(map[string]Client)
-    http.Handle("/scripts/", authenticate(pageHandler{""}))
     http.Handle("/review2017", authenticate(pageHandler{"review.html"}))
     http.HandleFunc("/login", handleLogin)
     http.HandleFunc("/ajax/save", save)
@@ -72,34 +47,34 @@ func (h pageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
     }
 }
 
-func checkCookie(w http.ResponseWriter, r *http.Request) bool {
-    cookie, err := r.Cookie("session")
-    if err != nil {
-        if err != http.ErrNoCookie {
-            fmt.Fprint(w, err)
-            return false
-        } else {
-            err = nil
+func checkCookie(w http.ResponseWriter, r *http.Request) string {
+    fmt.Printf("CHECK COOKIE\n")
+    var client Client
+    var present bool = false
+    for _, cookie := range r.Cookies() {
+        fmt.Printf("%s %s\n",cookie.Name, cookie.Value)
+	if cookie.Name == "session" {
+	    storageMutex.RLock()
+	    client, present = sessionStore[cookie.Value]
+	    storageMutex.RUnlock()
+
+            if present == true {
+                http.SetCookie(w, cookie)
+	        break
+            }
         }
     }
-    fmt.Printf("Cookie %s\n", cookie.Value)
-    var present bool
-    var client Client
-    storageMutex.RLock()
-    client, present = sessionStore[cookie.Value]
-    storageMutex.RUnlock()
-
     if present == false {
-        fmt.Printf("Error cookie not found\n")
-        return false
+        fmt.Printf("Error no cookie\n")
+        return ""
     }
+
     if !client.loggedIn == true {
         fmt.Printf("User not logged in\n")
-        return false
+        return ""
     }
     fmt.Printf("got client user %s\n", client.username)
-    http.SetCookie(w, cookie)
-    return true
+    return client.username
 }
 
 type authenticationMiddleware struct {
@@ -108,10 +83,10 @@ type authenticationMiddleware struct {
 
 func (h authenticationMiddleware) ServeHTTP(w http.ResponseWriter,r *http.Request) {
     fmt.Printf("authenticationMiddleware\n")
-    if !checkCookie(w, r) {
+    if checkCookie(w, r) == "" {
         fmt.Printf("Error: cookie check failed\n")
         fmt.Printf("show login page\n")
-        fmt.Fprint(w, loginPage)
+        http.ServeFile(w, r, "login.html")
         return
     } else {
         fmt.Printf("show page "+r.URL.Path[:]+"\n")
@@ -125,7 +100,7 @@ func authenticate(h http.Handler) authenticationMiddleware {
 }
 
 func handleLogin(w http.ResponseWriter, r *http.Request) {
-    fmt.Printf("handleLogin\n")
+    fmt.Printf("handleLogin-------------------------------\n")
     cookie, err := r.Cookie("session")
     if err != nil {
         if err != http.ErrNoCookie {
@@ -174,9 +149,9 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
         sessionStore[cookie.Value] = client
         storageMutex.Unlock()
         fmt.Printf("USER:"+client.username+"\n")
-        http.Redirect(w, r, "/review2017", http.StatusFound)
+        http.ServeFile(w, r, "/review2017")
     } else {
-        fmt.Fprint(w, loginPage)
+        //http.ServeFile(w, r, "login.html")
         fmt.Fprintln(w, "Wrong password.")
     }
 }
@@ -214,7 +189,7 @@ func getData(w http.ResponseWriter, r *http.Request) {
     }
 
     // read saved json data
-    tabledata, err := ioutil.ReadFile(user+".js")
+    tabledata, err := ioutil.ReadFile("data/"+user+".js")
     fmt.Printf("tabledata 1\n")
     if err != nil {
         // Load original data
