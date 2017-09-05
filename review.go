@@ -21,23 +21,40 @@ const loginPage = `<html>
 <head>
     <title>Login</title>
 </head>
+<style>
+.container {
+  width:210px;
+  margin:0 auto;
+    padding: 16px;
+}
+input[type=input], input[type=password] {
+    width: 100%;
+    padding: 12px 20px;
+    margin: 8px 0;
+    display: inline-block;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+}
+button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 14px 20px;
+    margin: 8px 0;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+}
+</style>
 <body>
-    <form id="login" action="foo" method="post">
-        <input type="input" name="user" />
-        <input type="password" name="password" />
-        <input type="submit" value="Login" />
+    <form id="login" action="/login" method="post">
+        <div class="container">
+	<label><b>Username</b></label>
+	<input type="input" name="user" />
+	<label><b>Password</b></label>
+	<input type="password" name="password" />
+        <button type="submit" />Login</button>
+        </div>
     </form>
-    <script>
-    function SetLoginUrl() {
-	var path = window.location.pathname
-	if (path.substring(0,"/login".length) == "/login") {
-	    path = path.substring("/login".length)
-	}
-        return "/login"
-    }
-
-    document.getElementById('login').setAttribute('action', SetLoginUrl());
-    </script>
 </body>
 </html>`
 
@@ -53,7 +70,7 @@ func main() {
 
     // read password file
     managers["mcharleb"] = "123"
-    fmt.Printf("mcharleb "+managers["mcharleb"])
+    managers["rkumar"] = "123"
 
     http.ListenAndServe(":8000", nil)
 }
@@ -72,34 +89,33 @@ func (h pageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
     }
 }
 
-func checkCookie(w http.ResponseWriter, r *http.Request) bool {
-    cookie, err := r.Cookie("session")
-    if err != nil {
-        if err != http.ErrNoCookie {
-            fmt.Fprint(w, err)
-            return false
-        } else {
-            err = nil
+func checkCookie(w http.ResponseWriter, r *http.Request) string {
+    fmt.Printf("CHECK COOKIE\n")
+    var client Client
+    var present bool = false
+    for _, cookie := range r.Cookies() {
+        fmt.Printf("%s %s\n",cookie.Name, cookie.Value)
+	if cookie.Name == "session" {
+	    storageMutex.RLock()
+	    client, present = sessionStore[cookie.Value]
+	    storageMutex.RUnlock()
+
+            if present == true {
+                http.SetCookie(w, cookie)
+	        break
+            }
         }
     }
-    fmt.Printf("Cookie %s\n", cookie.Value)
-    var present bool
-    var client Client
-    storageMutex.RLock()
-    client, present = sessionStore[cookie.Value]
-    storageMutex.RUnlock()
-
     if present == false {
         fmt.Printf("Error cookie not found\n")
-        return false
+        return ""
     }
     if !client.loggedIn == true {
         fmt.Printf("User not logged in\n")
-        return false
+        return ""
     }
     fmt.Printf("got client user %s\n", client.username)
-    http.SetCookie(w, cookie)
-    return true
+    return client.username
 }
 
 type authenticationMiddleware struct {
@@ -108,7 +124,7 @@ type authenticationMiddleware struct {
 
 func (h authenticationMiddleware) ServeHTTP(w http.ResponseWriter,r *http.Request) {
     fmt.Printf("authenticationMiddleware\n")
-    if !checkCookie(w, r) {
+    if checkCookie(w, r) == "" {
         fmt.Printf("Error: cookie check failed\n")
         fmt.Printf("show login page\n")
         fmt.Fprint(w, loginPage)
@@ -214,7 +230,7 @@ func getData(w http.ResponseWriter, r *http.Request) {
     }
 
     // read saved json data
-    tabledata, err := ioutil.ReadFile(user+".js")
+    tabledata, err := ioutil.ReadFile("data/"+user+".js")
     fmt.Printf("tabledata 1\n")
     if err != nil {
         // Load original data

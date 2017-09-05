@@ -41,6 +41,24 @@ var rankCalc = function(values, data, calcParams){
 
     return count;
 }
+function rankValidate() {
+    // Look for duplicates
+    var dups = [];
+    var i;
+    var rows = $("#managee-table").tabulator("getRows");
+    for (i=0; i < rows.length; i++) {
+	s = rows[i]; 
+	var num = Number(s.getData().rank);
+	if (num > 0 && dups[num]) {
+            s.getCells()[3].getElement().css({"background-color":"#ee0000"});
+	    dups[num].getCells()[3].getElement().css({"background-color":"#ee0000"});
+	}
+	else if (num != 0) {
+	    s.getCells()[3].getElement().css({"background-color":""});
+	    dups[num] = s;
+	}
+    }
+}
 var rankEditor = function(cell, onRendered, success, cancel, editorParams){
     //cell - the cell component for the editable cell
     //onRendered - function to call when the editor has been rendered
@@ -63,22 +81,7 @@ var rankEditor = function(cell, onRendered, success, cancel, editorParams){
     editor.on("change blur", function(e){
         if (editor.val() > 0 && editor.val() <= editorParams.max) {
             success(editor.val());
-            // Look for duplicates
-            var dups = [];
-            var i;
-            var rows = $("#managee-table").tabulator("getRows");
-            for (i=0; i < rows.length; i++) {
-                s = rows[i]; 
-		var num = Number(s.getData().rank);
-                if (num > 0 && dups[num]) {
-                    s.getElement().css({"background-color":"#ee0000"});
-                    dups[num].getElement().css({"background-color":"#ee0000"});
-                }
-		else if (num != 0) {
-                    s.getElement().css({"background-color":""});
-                    dups[num] = s;
-		}
-            }
+            rankValidate();
         }
         else {
             cancel();
@@ -116,6 +119,8 @@ $.ajax({
 	});
 	//load sample data into the table
 	$("#managee-table").tabulator("setData", tabledata);
+
+	rankValidate();
    },
    error:function(exception){
       alert('Exception:'+exception);
