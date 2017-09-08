@@ -10,18 +10,14 @@ import (
 
 var sessionStore map[string]Client
 var storageMutex sync.RWMutex
-var managers map[string]string
+var passwords map[string]string
 
 type Client struct {
     loggedIn bool
     username string
 }
 
-const loginPage = `<html>
-<head>
-    <title>Login</title>
-</head>
-<style>
+const css = `<style>
 .container {
   width:210px;
   margin:0 auto;
@@ -45,6 +41,12 @@ button {
     width: 100%;
 }
 </style>
+`
+
+const loginPage = `<html>
+<head>
+    <title>Login</title>
+</head>` + css + `
 <body>
     <form id="login" action="/login" method="post">
         <div class="container">
@@ -53,24 +55,42 @@ button {
 	<label><b>Password</b></label>
 	<input type="password" name="password" />
         <button type="submit" />Login</button>
+        <button type="reset" />Reset Password</button>
         </div>
     </form>
 </body>
 </html>`
 
+const loginPage = `<html>
+<head>
+    <title>Reset Password</title>
+</head>` + css + `
+<body>
+    <form id="pwreset" action="/pwreset" method="post">
+        <div class="container">
+	<label><b>Username</b></label>
+	<input type="input" name="user" />
+	<label><b>New Password</b></label>
+	<input type="password" name="password" />
+        <button type="submit" />Request Password Reset</button>
+        </div>
+    </form>
+</body>
+</html>`
 func main() {
 
-    managers = make(map[string]string)
+    passwords = make(map[string]string)
     sessionStore = make(map[string]Client)
     http.Handle("/scripts/", authenticate(pageHandler{""}))
     http.Handle("/review2017", authenticate(pageHandler{"review.html"}))
     http.HandleFunc("/login", handleLogin)
+    http.HandleFunc("/pwreset", handlePwReset)
     http.HandleFunc("/ajax/save", save)
     http.HandleFunc("/ajax/get", getData)
 
     // read password file
-    managers["mcharleb"] = "123"
-    managers["rkumar"] = "123"
+    passwords["mcharleb"] = "123"
+    passwords["rkumar"] = "123"
 
     http.ListenAndServe(":8000", nil)
 }
@@ -181,7 +201,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
     }
 
     fmt.Printf("Login "+r.FormValue("user")+" "+r.FormValue("password")+"\n")
-    if (managers[r.FormValue("user")] == r.FormValue("password")) {
+    if (passwords[r.FormValue("user")] == r.FormValue("password")) {
         fmt.Printf("Login good - loading \n")
         //login user
         client.loggedIn = true
@@ -195,6 +215,48 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
         fmt.Fprint(w, loginPage)
         fmt.Fprintln(w, "Wrong password.")
     }
+}
+
+func handlePwReset(w http.ResponseWriter, r *http.Request) {
+    fmt.Printf("handlePwReset\n")
+    cookie, err := r.Cookie("session")
+    if err != nil {
+        if err != http.ErrNoCookie {
+            fmt.Fprint(w, err)
+            return
+        } else {
+            err = nil
+        }
+    }
+    var present bool
+    var client Client
+    if cookie != nil {
+        storageMutex.Lock()
+        client, present = sessionStore[cookie.Value]
+        if present == true {
+            client.loggedIn = false
+            sessionStore[cookie.Value] = client
+        }
+        storageMutex.Unlock()
+    } else {
+        present = false
+    }
+
+    fmt.Printf("parsing form\n")
+    http.SetCookie(w, cookie)
+    err = r.ParseForm()
+    if err != nil {
+        fmt.Fprint(w, err)
+        return
+    }
+
+    fmt.Printf("Reset "+r.FormValue("user")+" "+r.FormValue("password")+"\n")
+    passwords[r.FormValue("user")] = r.FormValue("password")
+    http.Redirect(w, r, "/login", http.StatusFound)
+}
+
+func resetPassword(w http.ResponseWriter, r *http.Request) {
+    fmt.Printf("resetPassword\n")
 }
 
 func save(w http.ResponseWriter, r *http.Request) {
