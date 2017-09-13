@@ -2,13 +2,12 @@ package main
 
 import (
     "fmt"
-    "strconv"
     "encoding/json"
     "net/http"
     "sync"
     "io/ioutil"
     "github.com/satori/go.uuid"
-    "github.com/xuri/excelize"
+    "github.com/tealeg/xlsx"
 )
 
 var sessionStore map[string]Client
@@ -33,14 +32,45 @@ input[type=input], input[type=password] {
     border: 1px solid #ccc;
     box-sizing: border-box;
 }
-button {
-    background-color: #4CAF50;
-    color: white;
-    padding: 14px 20px;
-    margin: 8px 0;
-    border: none;
-    cursor: pointer;
-    width: 100%;
+
+.btn {
+  position: relative;
+  top: 0px;
+  text-decoration: none;
+  background-color: #4CAF50;
+  padding: 14px 20px;
+  margin: 8px;
+  width: 100%;
+  border: 1px solid #c4c4c4;
+  -webkit-border-radius: 5px;
+  -moz-border-radius: 5px;
+  border-radius: 5px;
+  -webkit-box-shadow: 0px 5px 0px #c4c4c4;
+  -moz-box-shadow: 0px 5px 0px #c4c4c4;
+  -ms-box-shadow: 0px 5px 0px #c4c4c4;
+  -o-box-shadow: 0px 5px 0px #c4c4c4;
+  box-shadow: 0px 5px 0px #c4c4c4;
+  color: #222;
+  -webkit-transition: All 150ms ease;
+  -moz-transition: All 150ms ease;
+  -o-transition: All 150ms ease;
+  -ms-transition: All 150ms ease;
+  transition: All 150ms ease;
+}
+/*==========  Active State  ==========*/
+.btn:active {
+  position: relative;
+  top: 5px;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  -ms-box-shadow: none !important;
+  -o-box-shadow: none !important;
+  box-shadow: none !important;
+  -webkit-transition: All 150ms ease;
+  -moz-transition: All 150ms ease;
+  -o-transition: All 150ms ease;
+  -ms-transition: All 150ms ease;
+  transition: All 150ms ease;
 }
 </style>
 `
@@ -48,18 +78,18 @@ button {
 const loginPage = `<html>
 <head>
     <title>Login</title>
-</head>` + css + `
-<body>
+</head>
+<body>` + css +`
     <div class="container">
     <form id="login" action="/login" method="post">
 	<label><b>Username</b></label>
 	<input type="input" name="user" />
 	<label><b>Password</b></label>
 	<input type="password" name="pin" />
-        <button type="submit" />Login</button>
+        <button class="btn" type="submit" />Login</button>
     </form>
     <form id="reset" action="/reset" method="post">
-        <button type="submit" />Reset PIN</button>
+        <button class="btn" type="submit" />Reset PIN</button>
     </form>
     </div>
 </body>
@@ -77,7 +107,7 @@ const resetPage = `<html>
 	<input type="input" name="user" />
 	<label><b>New PIN</b></label>
 	<input type="password" name="pin" />
-        <button type="submit" />Reset PIN</button>
+        <button class"btn" type="submit" />Reset PIN</button>
         </div>
     </form>
 </body>
@@ -372,7 +402,8 @@ func submit(w http.ResponseWriter, r *http.Request) {
         fmt.Printf("Error: cookie check failed\n")
         return
     }
-    err := r.ParseForm()
+    var err error
+    err = r.ParseForm()
     if err != nil {
         fmt.Fprint(w, err)
         return
@@ -393,34 +424,46 @@ func submit(w http.ResponseWriter, r *http.Request) {
         Rank int
         Notes string
     }
-    var row []Row
-    err2 := json.Unmarshal(data, &row)
-    if err2 != nil {
-        fmt.Println("error:", err2)
+    var datarows []Row
+    err = json.Unmarshal(data, &datarows)
+    if err != nil {
+        fmt.Println("error:", err)
     }
-    xlsx := excelize.NewFile()
- // Create a new sheet.
-    xlsx.NewSheet(2, "Sheet2")
-    // Set value of a cell.
-    xlsx.SetCellValue("Sheet2", "A1", user)
-    xlsx.SetCellValue("Sheet1", "B2", 100)
-    // Set active sheet of the workbook.
-    xlsx.SetActiveSheet(2)
-    for j, v := range row {
+    var file *xlsx.File
+    var sheet *xlsx.Sheet
+    var row *xlsx.Row
+    var cell *xlsx.Cell
+
+    file = xlsx.NewFile()
+    sheet, err = file.AddSheet("Sheet1")
+    if err != nil {
+        fmt.Printf(err.Error())
+    }
+    row = sheet.AddRow()
+    cell = row.AddCell()
+    cell.Value = user
+    for j, v := range datarows {
         fmt.Println("Saving row", j)
         fmt.Println("ID: ", v.ID)
         fmt.Println("Name: ", v.Name)
         fmt.Println("YN: ", v.YN)
         fmt.Println("Rank: ", v.Rank)
-	idxstr := strconv.Itoa(j+1)
-        xlsx.SetCellValue("Sheet2", "A"+idxstr, v.ID)
-        xlsx.SetCellValue("Sheet2", "B"+idxstr, v.Name)
-        xlsx.SetCellValue("Sheet2", "C"+idxstr, v.YN)
-        xlsx.SetCellValue("Sheet2", "D"+idxstr, v.Rank)
+        row = sheet.AddRow()
+        cell = row.AddCell()
+        cell.SetValue(v.ID)
+        cell = row.AddCell()
+        cell.SetString(v.Name)
+        cell = row.AddCell()
+        cell.SetString(v.YN)
+        cell = row.AddCell()
+        cell.SetValue(v.Rank)
     }
+    fmt.Println("TEST1")
     // Save xlsx file by the given path.
-    err3 := xlsx.SaveAs("data/"+user+".xlsx")
-    if err3 != nil {
-        fmt.Println(err3)
+    err = file.Save("data/"+user+".xlsx")
+    if err != nil {
+        fmt.Println(err)
+    } else {
+        fmt.Println("Saved Excel file")
     }
 }

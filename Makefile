@@ -5,7 +5,7 @@ all: review
 env:
 	@[ "${GOPATH}" != "" ] || (echo "GOPATH not set:\n  export GOPATH=/home/go" && false)
 	@[ -d  ${GOPATH}/src/github.com/satori/go.uuid ] || go get github.com/satori/go.uuid
-	@[ -d  ${GOPATH}/src/github.com/xuri/excelize ] || go get github.com/xuri/excelize
+	@[ -d  ${GOPATH}/src/github.com/tealeg/xlsx ] || go get github.com/tealeg/xlsx
 
 /usr/bin/go:
 	@echo "Missing go. Install using:"
