@@ -2,6 +2,7 @@ package main
 
 import (
     "fmt"
+    "path/filepath"
     "encoding/json"
     "net/http"
     "sync"
@@ -236,7 +237,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
     var pin = r.FormValue("pin");
     if (user != "" && pin != "") {
         fmt.Printf("Login "+user+", "+pin+"\n")
-        bytepin, err := ioutil.ReadFile("data/"+user+"_pin.js")
+        bytepin, err := ioutil.ReadFile(filepath.FromSlash("data/"+user+"_pin.js"))
         if err != nil {
             fmt.Fprint(w, resetPage)
             fmt.Printf("No pin saved\n")
@@ -340,7 +341,7 @@ func handlePinReset(w http.ResponseWriter, r *http.Request) {
     }
 
     fmt.Printf("Reset "+user+" "+pin+"\n")
-    ioutil.WriteFile("data/"+user+"_pin.js", []byte(pin), 0644)
+    ioutil.WriteFile(filepath.FromSlash("data/"+user+"_pin.js"), []byte(pin), 0644)
     http.Redirect(w, r, "/login", http.StatusFound)
 }
 
@@ -363,7 +364,7 @@ func save(w http.ResponseWriter, r *http.Request) {
     if user != formuser {
         fmt.Printf("Error: user not provided\n")
     } else {
-        ioutil.WriteFile("data/"+user+".js", []byte(data), 0644)
+        ioutil.WriteFile(filepath.FromSlash("data/"+user+".js"), []byte(data), 0644)
     }
     w.Write([]byte("{}"))
 }
@@ -376,11 +377,11 @@ func getData(w http.ResponseWriter, r *http.Request) {
     }
 
     // read saved json data
-    tabledata, err := ioutil.ReadFile("data/"+user+".js")
+    tabledata, err := ioutil.ReadFile(filepath.FromSlash("data/"+user+".js"))
     fmt.Printf("tabledata 1\n")
     if err != nil {
         // Load original data
-        tabledata, err = ioutil.ReadFile("data/unranked.js")
+        tabledata, err = ioutil.ReadFile(filepath.FromSlash("data/unranked.js"))
         fmt.Printf("tabledata 2\n")
         if err != nil {
             fmt.Fprint(w, err)
@@ -460,7 +461,7 @@ func submit(w http.ResponseWriter, r *http.Request) {
     }
     fmt.Println("TEST1")
     // Save xlsx file by the given path.
-    err = file.Save("data/"+user+".xlsx")
+    err = file.Save(filepath.FromSlash(filepath.FromSlash("data/"+user+".xlsx")))
     if err != nil {
         fmt.Println(err)
     } else {

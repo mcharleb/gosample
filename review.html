@@ -111,7 +111,7 @@ var ynCalc = function(values, data, calcParams){
     });
 
     yncount = count;
-    $("#submit").prop("disabled", yncount + rankcount)
+    $("#submit").prop("disabled", yncount + rankcount + dupcount)
     return count;
 }
 
@@ -122,13 +122,12 @@ function onReorder() {
         var s = rows[i];
         var j = i+1;
 	var rowdata = s.getData();
-        console.log("             ID ", rowdata.ID, " Name ", rowdata.Name, " Rank ", rowdata.Rank)
         $("#managee-table").tabulator("updateRow", rowdata.ID, {Rank:j});
-        console.log('$("#managee-table").tabulator("updateRow, ', rowdata.ID, ', [{Rank:',j,'}])');
         s = $("#managee-table").tabulator("getRows")[i];
 	rowdata = s.getData();
-        console.log("Update (",j,"): ID ", rowdata.ID, " Name ", rowdata.Name, " Rank ", rowdata.Rank)
     }
+    rankValidate();
+    $("#submit").prop("disabled", yncount + rankcount + dupcount)
 }
 
 function rankValidate() {
