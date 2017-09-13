@@ -7,24 +7,41 @@ div.formdiv {
   	margin: 0 auto;
 	margin-top : 10px;
 }
+.buttonclass {
+    background-color: #4CAF50;
+    color: white;
+    padding: 14px 20px;
+    margin: 8px 0;
+    border: none;
+    cursor: pointer;
+    width: 100px;
+}
 </style>
 <body onload="onLoad()">
-<h3 id="username">Username</h3>
-<div>
-<div id="managee-table" ></div><div/>
-</div>
+<h3>Reviewer:  <span id="username"/></h3>
+<div id="managee-table" ></div>
 <div class="formdiv">
-  <input type="button" value="Save" onclick="onSave()"/>
+  <form id="login" action="/logout" method="post">
+    <input class="buttonclass" id="reorder" type="button" value="Reorder" onclick="onReorder()"/>
+    <input class="buttonclass" id="save" type="button" value="Save" onclick="onSave()"/>
+    <input class="buttonclass" id="submit" type="button" value="Submit" onclick="onSubmit()"/>
+    <button class="buttonclass" type="submit">Logout</button>
+  </form>
 </div>
-<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
-<link href="https://cdnjs.cloudflare.com/ajax/libs/tabulator/3.2.2/css/tabulator.min.css" rel="stylesheet">
-<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/tabulator/3.2.2/js/tabulator.min.js"></script>
+<script type="text/javascript" src="/scripts/jquery.min.js"></script>
+<script type="text/javascript" src="/scripts/jquery-ui.min.js"></script>
+<link href="/scripts/tabulator.min.css" rel="stylesheet">
+<script type="text/javascript" src="/scripts/tabulator.min.js"></script>
 <script>
 function onSave() {
     var user = document.getElementById("username").innerHTML;
     $.post( "/ajax/save", { "user": user, 'data': JSON.stringify($("#managee-table").tabulator("getData")) } )
 }
+function onSubmit() {
+    var user = document.getElementById("username").innerHTML;
+    $.post( "/ajax/submit", { "user": user, 'data': JSON.stringify($("#managee-table").tabulator("getData")) } )
+}
+
 
 var rankCalc = function(values, data, calcParams){
     //values - array of column values
@@ -41,6 +58,40 @@ var rankCalc = function(values, data, calcParams){
 
     return count;
 }
+var ynCalc = function(values, data, calcParams){
+    //values - array of column values
+    //data - all table data
+    //calcParams - params passed from the column defintion object
+
+    var count = 0;
+
+    values.forEach(function(value){
+        if(value == ""){
+            count ++;
+        }
+    });
+
+    return count;
+}
+
+function onReorder() {
+    // Look for duplicates
+    var dups = [];
+    var i;
+    var rows = $("#managee-table").tabulator("getRows");
+    for (i=0; i < rows.length; i++) {
+	s = rows[i]; 
+	var num = Number(s.getData().Rank);
+	if (num > 0 && dups[num]) {
+            s.getCells()[4].getElement().css({"background-color":"#ee0000"});
+	    dups[num].getCells()[4].getElement().css({"background-color":"#ee0000"});
+	}
+	else if (num != 0) {
+	    s.getCells()[4].getElement().css({"background-color":""});
+	    dups[num] = s;
+	}
+    }
+}
 function rankValidate() {
     // Look for duplicates
     var dups = [];
@@ -48,13 +99,13 @@ function rankValidate() {
     var rows = $("#managee-table").tabulator("getRows");
     for (i=0; i < rows.length; i++) {
 	s = rows[i]; 
-	var num = Number(s.getData().rank);
+	var num = Number(s.getData().Rank);
 	if (num > 0 && dups[num]) {
-            s.getCells()[3].getElement().css({"background-color":"#ee0000"});
-	    dups[num].getCells()[3].getElement().css({"background-color":"#ee0000"});
+            s.getCells()[4].getElement().css({"background-color":"#ee0000"});
+	    dups[num].getCells()[4].getElement().css({"background-color":"#ee0000"});
 	}
 	else if (num != 0) {
-	    s.getCells()[3].getElement().css({"background-color":""});
+	    s.getCells()[4].getElement().css({"background-color":""});
 	    dups[num] = s;
 	}
     }
@@ -80,8 +131,36 @@ var rankEditor = function(cell, onRendered, success, cancel, editorParams){
     //when the value has been set, trigger the cell to update
     editor.on("change blur", function(e){
         if (editor.val() > 0 && editor.val() <= editorParams.max) {
-            success(editor.val());
+            success(parseInt(editor.val()));
             rankValidate();
+        }
+        else {
+            cancel();
+	}
+    });
+
+    //return the editor element
+    return editor;
+};
+
+var ynEditor = function(cell, onRendered, success, cancel, editorParams){
+
+    //create and style editor
+    var editor = $("<input/>");
+
+    //Set value of editor to the current value of the cell
+    editor.val(cell.getValue());
+
+    //set focus on the select box when the editor is selected (timeout allows for editor to be added to DOM)
+    onRendered(function(){
+      editor.focus();
+    });
+
+    //when the value has been set, trigger the cell to update
+    editor.on("change blur", function(e){
+        var x = editor.val();
+        if (x == "y" || x == "Y" || x == "n" || x == "N") {
+            success(x);
         }
         else {
             cancel();
@@ -107,14 +186,16 @@ $.ajax({
     document.getElementById("username").innerHTML = d.user;
     tabledata = d.tabledata;
 	$("#managee-table").tabulator({
+             movableRows: true, //enable user movable rows
 	    //height:205, // set height of table
 	    fitColumns:true, //fit columns to width of table (optional)
 	    columns:[ //Define Table Columns
-		{title:"ID", field:"id", width:45, columnMinWidth:45},
-		{title:"Name", field:"name", width:300, columnMinWidth:300},
-		{title:"Y/N", field:"yn", width:65, columnMinWidth:65, editor:true, formatter:"tickCross"},
-		{title:"Rank", field:"rank", width:70, columnMinWidth:80, sorter:"number", editor:rankEditor, editorParams:{max:tabledata.length}, bottomCalc:rankCalc},
-		{title:"Notes", field:"notes", sorter:"number", editor:"input"},
+                {rowHandle:true, formatter:"handle", headerSort:false, frozen:true, width:30, minWidth:30},
+		{title:"ID", field:"ID", width:45, columnMinWidth:45},
+		{title:"Name", field:"Name", width:300, columnMinWidth:300, headerSort:false},
+		{title:"Promo Y/N", field:"YN", width:95, columnMinWidth:65, editor:ynEditor, bottomCalc:ynCalc, headerSort:false},
+		{title:"Rank", field:"Rank", width:70, columnMinWidth:80, sorter:"number", editor:rankEditor, editorParams:{max:tabledata.length}, bottomCalc:rankCalc},
+		{title:"Notes", field:"Notes", sorter:"number", editor:"input", headerSort:false},
 	    ],
 	});
 	//load sample data into the table

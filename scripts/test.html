@@ -1,0 +1,31 @@
+<html>
+<body>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+<script type="text/javascript" src="/scripts/jquery.tablednd.min.js"></script>
+<script type="text/javascript">
+$(document).ready(function() {
+    // Initialise the table
+    $("#table-1").tableDnD();
+    $('#table-1').tableDnD({
+		onDrop: function(table, row) {
+			alert($.tableDnD.serialize());
+		}
+	});
+});
+</script>
+<table id="table-1" cellspacing="0" cellpadding="2">
+    <thead>
+    <th><td>NUM</td><td class="dragHandle">TXT</td><td>DESC</td></tr>
+    </thead>
+    <tbody>
+    <tr id="1"><td>1</td><td class="draghandle">One</td><td>some text</td></tr>
+    <tr id="2"><td>2</td><td>Two</td><td>some text</td></tr>
+    <tr id="3"><td>3</td><td>Three</td><td>some text</td></tr>
+    <tr id="4"><td>4</td><td>Four</td><td>some text</td></tr>
+    <tr id="5"><td>5</td><td>Five</td><td>some text</td></tr>
+    <tr id="6"><td>6</td><td>Six</td><td>some text</td></tr>
+    </tbody>
+</table>
+</body>
+</html>

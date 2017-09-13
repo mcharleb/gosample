@@ -1,6 +1,6 @@
-[   {"id":1, "name":"Oli Bob", "yn":0, "rank":""},
-    {"id":2, "name":"Mary May", "yn":0, "rank":""},
-    {"id":3, "name":"Christine Lobowski", "yn":0, "rank":""},
-    {"id":4, "name":"Brendon Philips", "yn":0, "rank":""},
-    {"id":5, "name":"Margret Marmajuke", "yn":0, "rank":""}
+[   {"ID":1, "Name":"Oli Bob", "YN":"", "Rank":""},
+    {"ID":2, "Name":"Mary May", "YN":"", "Rank":""},
+    {"ID":3, "Name":"Christine Lobowski", "YN":"", "Rank":""},
+    {"ID":4, "Name":"Brendon Philips", "YN":"", "Rank":""},
+    {"ID":5, "Name":"Margret Marmajuke", "YN":"", "Rank":""}
 ]
