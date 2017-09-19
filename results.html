@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" type="text/css" href="scripts/buttons.css">
+<style>
+div.formdiv { 
+	display: table;
+  	margin: 0 auto;
+	margin-top : 10px;
+}
+</style>
+</head>
+<body onload="onLoad()">
+<div id="summary-table" ></div>
+<div class="formdiv">
+    <input class="btn" type="button" value="Refresh" onclick="onRefresh()"/>
+</div>
+<script type="text/javascript" src="/scripts/jquery.min.js"></script>
+<script type="text/javascript" src="/scripts/jquery-ui.min.js"></script>
+<link href="/scripts/tabulator.min.css" rel="stylesheet">
+<script type="text/javascript" src="/scripts/tabulator.min.js"></script>
+<script>
+// Update the tabledata with the saved data and set the username
+var tabledata = "";
+
+function onRefresh() {
+$.ajax({
+    url: '/ajax/results',
+    type: 'POST',
+    data: {
+    },
+   success:function(data)//we got the response
+   {
+    var d = JSON.parse(data)
+/*
+    var arrayLength = d.length;
+    for (var i = 0; i < arrayLength; i++) {
+	user = d[i].user;
+        data = d[i].tabledata;
+    	for (var j = 0; j < arrayLength; j++) {
+		var empno = data[j]["ID"];
+		var yn = data[j]["YN"];
+		var rank = data[j]["Rank"];
+		if (yn == "Y" || yn == "y") { 
+			results[empno].ycount++;
+		} else if (yn == "Y" || yn == "y") { 
+			results[empno].ncount++;
+		} else {
+			//error
+		}
+		results[empno].ranktotal+=rank;
+	}
+    }
+    tabledata = "[ ";
+    for k, v := range results { 
+	var ycount = v.ycount;
+	var ncount = v.ncount;
+	var rankavg = v.ranktotal/results.length;
+
+	tabledata += `{ "ID":`+k+`, "Name":`+Names[k]+`, "Title":Titles[k]+`, "YCount":`+ycount.toString()+`, "YCount":`+ncount.toString()+`, "AvgRank":`+rankavg.toString()+`}`;
+    }
+
+    // for all 
+    // results[empno].avgrank=results[empno].ranktotal/tabledata.len;
+
+    tabledata = d.tabledata;
+	$("#summary-table").tabulator({
+            index: "ID",
+	    //height:205, // set height of table
+	    fitColumns:false, //fit columns to width of table (optional)
+	    columns:[ //Define Table Columns
+		{title:"ID", field:"ID", width:45, columnMinWidth:45},
+		{title:"Name", field:"Name", width:300, columnMinWidth:300, headerSort:false},
+		{title:"Title", field:"Name", width:300, columnMinWidth:300, headerSort:false},
+		{title:"Group", field:"Name", width:300, columnMinWidth:300, headerSort:false},
+		{title:"Promo Y", field:"YCount", width:95, columnMinWidth:65},
+		{title:"Promo N", field:"NCount", width:95, columnMinWidth:65},
+		{title:"Avg Rank", field:"AvgRank", width:70, columnMinWidth:80, sorter:"number"},
+	    ],
+	});
+	//load sample data into the table
+	$("#summary-table").tabulator("setData", tabledata);
+*/
+   },
+   error:function(exception){
+      alert('Exception:'+exception);
+   }
+});
+}
+
+function onLoad() {
+}
+</script>
+</body>
+</html>

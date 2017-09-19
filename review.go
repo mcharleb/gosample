@@ -1,7 +1,9 @@
 package main
 
 import (
+    "os"
     "fmt"
+    "strings"
     "path/filepath"
     "encoding/json"
     "net/http"
@@ -19,7 +21,28 @@ type Client struct {
     username string
 }
 
-const css = `<style>
+type Row struct {
+    ID  int
+    Name string
+    YN string
+    Rank int
+    Notes string
+}
+
+type ResultRow struct {
+    Name string
+    YCount int
+    NCount int
+    RankTotal int
+    YVotes []string
+    NVotes []string
+}
+
+const loginPage = `<html>
+<head>
+    <title>Login</title>
+<base href="">
+<style>
 .container {
   width:210px;
   margin:0 auto;
@@ -34,53 +57,10 @@ input[type=input], input[type=password] {
     box-sizing: border-box;
 }
 
-.btn {
-  position: relative;
-  top: 0px;
-  text-decoration: none;
-  background-color: #4CAF50;
-  padding: 14px 20px;
-  margin: 8px;
-  width: 100%;
-  border: 1px solid #c4c4c4;
-  -webkit-border-radius: 5px;
-  -moz-border-radius: 5px;
-  border-radius: 5px;
-  -webkit-box-shadow: 0px 5px 0px #c4c4c4;
-  -moz-box-shadow: 0px 5px 0px #c4c4c4;
-  -ms-box-shadow: 0px 5px 0px #c4c4c4;
-  -o-box-shadow: 0px 5px 0px #c4c4c4;
-  box-shadow: 0px 5px 0px #c4c4c4;
-  color: #222;
-  -webkit-transition: All 150ms ease;
-  -moz-transition: All 150ms ease;
-  -o-transition: All 150ms ease;
-  -ms-transition: All 150ms ease;
-  transition: All 150ms ease;
-}
-/*==========  Active State  ==========*/
-.btn:active {
-  position: relative;
-  top: 5px;
-  -webkit-box-shadow: none !important;
-  -moz-box-shadow: none !important;
-  -ms-box-shadow: none !important;
-  -o-box-shadow: none !important;
-  box-shadow: none !important;
-  -webkit-transition: All 150ms ease;
-  -moz-transition: All 150ms ease;
-  -o-transition: All 150ms ease;
-  -ms-transition: All 150ms ease;
-  transition: All 150ms ease;
-}
 </style>
-`
-
-const loginPage = `<html>
-<head>
-    <title>Login</title>
+<link href="/scripts/buttons.css" rel="stylesheet">
 </head>
-<body>` + css +`
+<body>
     <div class="container">
     <form id="login" action="/login" method="post">
 	<label><b>Username</b></label>
@@ -96,33 +76,18 @@ const loginPage = `<html>
 </body>
 </html>`
 
-const resetPage = `<html>
-<head>
-    <title>Reset PIN</title>
-</head>` + css + `
-<body>
-    <h1>Reset PIN</h1>
-    <form id="pwreset" action="/reset" method="post">
-        <div class="container">
-	<label><b>Username</b></label>
-	<input type="input" name="user" />
-	<label><b>New PIN</b></label>
-	<input type="password" name="pin" />
-        <button class"btn" type="submit" />Reset PIN</button>
-        </div>
-    </form>
-</body>
-</html>`
 func main() {
 
     sessionStore = make(map[string]Client)
-    http.Handle("/scripts/", authenticate(pageHandler{""}))
+    http.Handle("/scripts/", noauthenticate(pageHandler{""}))
     http.Handle("/review2017", authenticate(pageHandler{"review.html"}))
+    http.Handle("/results", noauthenticate(pageHandler{"results.html"}))
     http.HandleFunc("/login", handleLogin)
     http.HandleFunc("/reset", handlePinReset)
     http.HandleFunc("/logout", handleLogout)
     http.HandleFunc("/ajax/save", save)
     http.HandleFunc("/ajax/submit", submit)
+    http.HandleFunc("/ajax/results", getResults)
     http.HandleFunc("/ajax/get", getData)
 
     http.ListenAndServe(":8000", nil)
@@ -138,6 +103,15 @@ func (h pageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
         http.ServeFile(w, r, h.redir)
     } else {
 	fmt.Printf("Serving %s\n", r.URL.Path[1:])
+        path := r.URL.Path
+        var contentType string
+        if strings.HasSuffix(path, ".css") {
+	    fmt.Printf("Serving css\n")
+            contentType = "text/css"
+        } else {
+            contentType = "text/html"
+        }
+        w.Header().Add("Content-Type", contentType)
         http.ServeFile(w, r, r.URL.Path[1:])
     }
 }
@@ -175,8 +149,12 @@ type authenticationMiddleware struct {
     wrappedHandler http.Handler
 }
 
+type noauthenticationMiddleware struct {
+    wrappedHandler http.Handler
+}
+
 func (h authenticationMiddleware) ServeHTTP(w http.ResponseWriter,r *http.Request) {
-    fmt.Printf("authenticationMiddleware\n")
+    fmt.Printf("authenticationMiddleware"+r.URL.Path[:]+"\n")
     if checkCookie(w, r) == "" {
         fmt.Printf("Error: cookie check failed\n")
         fmt.Printf("show login page\n")
@@ -189,8 +167,17 @@ func (h authenticationMiddleware) ServeHTTP(w http.ResponseWriter,r *http.Reques
     }
 }
 
+func (h noauthenticationMiddleware) ServeHTTP(w http.ResponseWriter,r *http.Request) {
+    fmt.Printf("noauthenticationMiddleware\n")
+    h.wrappedHandler.ServeHTTP(w, r)
+}
+
 func authenticate(h http.Handler) authenticationMiddleware {
     return authenticationMiddleware{h}
+}
+
+func noauthenticate(h http.Handler) noauthenticationMiddleware {
+    return noauthenticationMiddleware{h}
 }
 
 func handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -237,10 +224,10 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
     var pin = r.FormValue("pin");
     if (user != "" && pin != "") {
         fmt.Printf("Login "+user+", "+pin+"\n")
-        bytepin, err := ioutil.ReadFile(filepath.FromSlash("data/"+user+"_pin.js"))
+        bytepin, err := ioutil.ReadFile(filepath.FromSlash("data/"+user+"/pin.js"))
         if err != nil {
-            fmt.Fprint(w, resetPage)
             fmt.Printf("No pin saved\n")
+            http.ServeFile(w, r, "reset.html")
             return
         }
         mypin := string(bytepin[:]);
@@ -328,20 +315,21 @@ func handlePinReset(w http.ResponseWriter, r *http.Request) {
     http.SetCookie(w, cookie)
     err = r.ParseForm()
     if err != nil {
-        fmt.Fprint(w, resetPage)
+        http.ServeFile(w, r, "reset.html")
         return
     }
     fmt.Printf("\n")
     var user = r.FormValue("user");
     var pin = r.FormValue("pin");
     if user == "" || pin == "" {
-        fmt.Fprint(w, resetPage)
-        fmt.Fprint(w, "Username or PIN cannot be empty")
+        http.ServeFile(w, r, "reset.html")
+        //fmt.Fprint(w, "Username or PIN cannot be empty")
         return
     }
 
     fmt.Printf("Reset "+user+" "+pin+"\n")
-    ioutil.WriteFile(filepath.FromSlash("data/"+user+"_pin.js"), []byte(pin), 0644)
+    _ = os.Mkdir(filepath.FromSlash("data/"+user), os.ModePerm)
+    ioutil.WriteFile(filepath.FromSlash("data/"+user+"/pin.js"), []byte(pin), 0644)
     http.Redirect(w, r, "/login", http.StatusFound)
 }
 
@@ -364,7 +352,7 @@ func save(w http.ResponseWriter, r *http.Request) {
     if user != formuser {
         fmt.Printf("Error: user not provided\n")
     } else {
-        ioutil.WriteFile(filepath.FromSlash("data/"+user+".js"), []byte(data), 0644)
+        ioutil.WriteFile(filepath.FromSlash("data/"+user+"/save.js"), []byte(data), 0644)
     }
     w.Write([]byte("{}"))
 }
@@ -377,11 +365,11 @@ func getData(w http.ResponseWriter, r *http.Request) {
     }
 
     // read saved json data
-    tabledata, err := ioutil.ReadFile(filepath.FromSlash("data/"+user+".js"))
+    tabledata, err := ioutil.ReadFile(filepath.FromSlash("data/"+user+"/save.js"))
     fmt.Printf("tabledata 1\n")
     if err != nil {
         // Load original data
-        tabledata, err = ioutil.ReadFile(filepath.FromSlash("data/unranked.js"))
+        tabledata, err = ioutil.ReadFile(filepath.FromSlash("data/promos.js"))
         fmt.Printf("tabledata 2\n")
         if err != nil {
             fmt.Fprint(w, err)
@@ -415,18 +403,14 @@ func submit(w http.ResponseWriter, r *http.Request) {
         fmt.Printf("Error: user not provided\n")
         return
     }
-    //var data = r.FormValue("data")
-    //fmt.Println("data:", data)
-    data := []byte(`[{"ID":1,"Name":"Oli Bob","YN":"y","Rank":1,"Notes":"a"},{"ID":2,"Name":"Mary May","YN":"y","Rank":2,"Notes":"d"},{"ID":3,"Name":"Christine Lobowski","YN":"y","Rank":3,"Notes":"d"},{"ID":4,"Name":"Brendon Philips","YN":"y","Rank":4,"Notes":"d"},{"ID":5,"Name":"Margret Marmajuke","YN":"y","Rank":5,"Notes":""}]`)
-    type Row struct {
-        ID  int
-        Name string
-        YN string
-        Rank int
-        Notes string
-    }
+    var data = r.FormValue("data")
+    fmt.Println("data:", data)
+    // Save data first so this data is reloaded
+    ioutil.WriteFile(filepath.FromSlash("data/"+user+"/save.js"), []byte(data), 0644)
+    ioutil.WriteFile(filepath.FromSlash("data/"+user+"/submit.js"), []byte(data), 0644)
+
     var datarows []Row
-    err = json.Unmarshal(data, &datarows)
+    err = json.Unmarshal([]byte(data), &datarows)
     if err != nil {
         fmt.Println("error:", err)
     }
@@ -461,10 +445,49 @@ func submit(w http.ResponseWriter, r *http.Request) {
     }
     fmt.Println("TEST1")
     // Save xlsx file by the given path.
-    err = file.Save(filepath.FromSlash(filepath.FromSlash("data/"+user+".xlsx")))
+    err = file.Save(filepath.FromSlash(filepath.FromSlash("data/"+user+"/submit.xlsx")))
     if err != nil {
         fmt.Println(err)
     } else {
         fmt.Println("Saved Excel file")
     }
 }
+
+func getResults(w http.ResponseWriter, r *http.Request) {
+    fmt.Printf("getResults\n")
+
+    files, _ := filepath.Glob("data/*/submit.js")
+    resultrows := make(map[int]ResultRow)
+    for _, v := range files {
+        fmt.Printf("file "+v+"\n")
+        data, _ := ioutil.ReadFile(v)
+	stringSlice := strings.Split(v, "/")
+	user := stringSlice[1]
+        fmt.Printf("user "+user+"\n")
+        var datarows []Row
+        _ = json.Unmarshal([]byte(data), &datarows)
+        for _, r := range datarows {
+	    var rr ResultRow
+	    if value, ok := resultrows[r.ID]; ok {
+	       rr = value
+	    } else {
+               rr = ResultRow{Name:r.Name, YCount:0, NCount:0, YVotes:[]string{}, NVotes:[]string{}, RankTotal:0}
+	    }
+            if strings.ToUpper(r.YN) == "Y" {
+                rr.YCount++
+                rr.YVotes = append(rr.YVotes, user)
+	    } else {
+                rr.NCount++
+                rr.NVotes = append(rr.NVotes, user)
+	    }
+            rr.RankTotal += r.Rank
+	    resultrows[r.ID] = rr
+	}
+    }
+    for k, v := range resultrows {
+        fmt.Printf("getResults\n")
+	fmt.Printf("key %d %+v %.2f\n", k, v, float64(v.RankTotal)/float64(len(files)))
+
+    }
+}
+

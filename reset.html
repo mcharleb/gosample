@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+.container {
+  width:210px;
+  margin:0 auto;
+    padding: 16px;
+}
+input[type=input], input[type=password] {
+    width: 100%;
+    padding: 12px 20px;
+    margin: 8px 0;
+    display: inline-block;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+}
+</style>
+<link href="/scripts/buttons.css" rel="stylesheet">
+</head>
+<body>
+    <h1>Reset PIN</h1>
+    <form id="pwreset" action="/reset" method="post">
+        <div class="container">
+        <label><b>Username</b></label>
+        <input type="input" name="user" />
+        <label><b>New PIN</b></label>
+        <input type="password" name="pin" />
+        <button class="btn" type="submit" />Reset PIN</button>
+        </div>
+    </form>
+</body>
+</html>`
+
